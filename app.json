@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Repa",
+    "slug": "repa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "repa",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF8F5",
+    "icon": "./assets/images/icon.png",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.hadisyed.repa",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIViewControllerBasedStatusBarAppearance": false
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAF8F5",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Used to add photos of your gym equipment to custom exercises.",
+          "photosPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}

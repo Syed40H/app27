@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": false,
+    "outDir": ".test-build",
+    "rootDir": ".",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "target": "es2022",
+    "lib": [
+      "es2022"
+    ],
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "src/domain/**/*.ts",
+    "src/data/pictograms.ts",
+    "src/data/exerciseArt.ts",
+    "src/data/exercises.ts",
+    "tests/**/*.ts"
+  ]
+}
