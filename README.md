@@ -1,99 +1,212 @@
 # Repa
 
-A gym rep tracker. Pick an exercise at the machine and it immediately shows what
-you did last time — weight, reps per set, and **where in that session it fell**,
-so you know whether those numbers came from a fresh start or from four exercises
-deep.
+**The gym log that remembers how tired you were.**
 
-Every competitor shows previous values. None of them tell you the fatigue
-context. That gap is the whole point of this app.
+Every workout tracker shows you what you lifted last time. None of them tell you
+*when* in the session you lifted it — so 185 × 8 looks identical whether it was
+your opening set or your fifth exercise in. One of those is a plateau. The other
+is a personal best.
 
-- Expo / React Native / TypeScript, Expo Router
-- All data on-device in SQLite. No backend, no account, no sync, no network calls
-- Camera is the only permission, used for photos on custom exercises
+Repa shows both. Pick an exercise at the machine and you get last session's
+weight and reps, plus where in that session it fell.
+
+iOS · Expo / React Native / TypeScript · entirely on-device
+
+---
+
+## The problem
+
+Progressive overload only works if you can compare like with like. In practice,
+nobody can:
+
+- You bench 185 × 8 fresh on Monday. On Thursday you bench 185 × 6, but it was
+  your fourth exercise. Did you get weaker? **No — and every app on the market
+  tells you that you did.**
+- The usual workaround is a rigid programme where order never changes. That works
+  until you walk in and the squat rack is taken.
+- So people log numbers they can't interpret, and eventually stop logging.
+
+The missing variable isn't weight or reps. It's fatigue, and it's already sitting
+in the data — nobody surfaces it.
+
+## How it works
+
+Tap an exercise. Before you type anything, Repa fills the row with ghost numbers
+from your last session, and shows a badge if the position changed:
+
+```
+Bench Press                        was #1 → now #4
+┌──────────────────────────────────────────────┐
+│ Set 1    185 lb × 8      (185 × 8 last time) │
+│ Set 2    185 lb × 6      (185 × 8 last time) │
+└──────────────────────────────────────────────┘
+```
+
+That badge is the entire product thesis. Two rules make it work:
+
+1. **It only appears when the position actually changed.** Same slot as last
+   time, no badge. Silence is what makes it mean something when it shows up.
+2. **Position is derived at read time, never stored.** Reorder your session,
+   delete an exercise, and every badge stays correct — because there's no
+   denormalised number to drift out of sync.
+
+Ghost numbers come from the single most recent session containing that exercise.
+Set 1 ghosts set 1. Add a fourth set today and it ghosts last time's final set,
+which is the honest comparison.
+
+## Why it's different
+
+|  | Hevy · Strong · Jefit | Repa |
+|---|---|---|
+| Previous weight & reps | ✅ | ✅ |
+| **Position in session** | ❌ | ✅ |
+| Account required | ✅ | ❌ |
+| Works offline | partly | always |
+| Data leaves the device | ✅ | ❌ never |
+
+## Private by construction
+
+Not a policy — an architecture. There is no backend to leak.
+
+- **Zero network calls.** Not analytics, not crash reporting, not a font fetch.
+- **Zero accounts.** No login, no email, no onboarding. Install and start lifting.
+- **One permission:** the camera, and only if you add your own exercise photo.
+- App Store privacy label: **Data Not Collected**.
+
+Your training history lives in a SQLite file on your phone and goes nowhere else.
+
+## Screenshots
+
+_Coming — drop three PNGs into `docs/screenshots/` named `workouts.png`,
+`session.png` and `records.png`, then delete this line and uncomment the table
+below._
+
+<!--
+| Workouts | Session | Records |
+|---|---|---|
+| ![Workouts](docs/screenshots/workouts.png) | ![Session](docs/screenshots/session.png) | ![Records](docs/screenshots/records.png) |
+-->
+
+
+## Design
+
+**Paper and ink.** Warm off-white, near-black text, one burnt-orange accent —
+deliberately light, because Hevy, Strong and Fitbod are all dark and this is
+instantly distinguishable in a screen recording.
+
+The accent is reserved for exactly three things: the active set, the Finish
+Workout button, and a new personal record. Everything else earns attention
+through type and space.
+
+Built for the actual context — standing, one-handed, sweaty, between sets. Tap
+targets are thumb-sized, inputs are 28px minimum, and numbers are set in tabular
+figures so a weight doesn't jitter while you type it.
+
+Every exercise carries original line-art on a tinted tile. The art is **drawn,
+not sourced**: 21 pictograms defined once as vector data in
+`src/data/pictograms.ts`, covering all 70 built-in exercises. The app renders
+them with `react-native-svg`, and the same data rasterises to a PNG contact
+sheet so the art could be reviewed rather than guessed at:
+
+```powershell
+npx tsc -p tsconfig.test.json; node scripts/preview-pictograms.js
+```
 
 ## Running it
 
-```bash
+Requires Node 20+, and the **Expo Go** app on an iPhone.
+
+```powershell
 npm install
-npx expo start
 ```
 
-Scan the QR code with the Camera app on an iPhone running **Expo Go**. The app is
-iOS-only by design.
-
-To see it with sample workouts already in it (for screenshots, or to look at the
-position badge without logging six sessions first):
-
-```bash
-EXPO_PUBLIC_DEMO_SEED=1 npx expo start --clear
+```powershell
+npm start
 ```
 
-Sample data only seeds into a database with no sessions of its own, so it can
-never mix into real data.
+Scan the QR code with the iPhone Camera app. Phone and computer need to be on
+the same Wi-Fi. iOS-only by design.
 
-## Checks
+The app opens empty — there is no sample data in a normal build, by design. To
+see it populated (for screenshots, or to watch the position badge work without
+logging six sessions first):
 
-```bash
-npm run typecheck   # tsc --noEmit, strict
-npm test            # unit tests for the recall, records, units and search logic
+```powershell
+$env:EXPO_PUBLIC_DEMO_SEED = '1'; npx expo start --clear
 ```
 
-The tests cover the parts where a bug would be silent and wrong rather than
-loud: ghost-set mapping, when the position badge appears, the records tiebreak,
-and unit conversion round-tripping.
+Sample data only seeds a database with no sessions of its own, so it can never
+mix into real data.
 
-## Layout
+## Architecture
 
 ```
 src/
   app/            screens (Expo Router)
-    (tabs)/       Workouts, Records, Settings
+    (tabs)/       Workouts · Records · Settings
     session/[id]  a single workout
     exercise/[id] one exercise: all-time best + last 3 sessions
-    history       every session ever, grouped by month
+    history       every session, grouped by month
   components/     UI building blocks
   db/             schema, migrations, every query
   domain/         pure logic — no React, no SQLite, fully unit tested
-  data/           the built-in exercise list, and demo seed data
+  data/           built-in exercises, pictograms, art mapping, demo seed
   media/          camera capture and photo storage
   state/          unit preference, data-loading hook
   theme/          design tokens
 ```
 
-`src/domain` is deliberately free of React and SQLite so the rules that matter
-can be tested directly.
+Three decisions carry most of the weight:
 
-## Design
+**`src/domain` contains no React and no SQLite.** The rules that would be
+expensive to get wrong — ghost mapping, badge visibility, record tiebreaks, unit
+conversion — are plain functions, tested directly with no renderer and no
+database.
 
-Paper and ink: a warm off-white background, near-black text, and a single
-burnt-orange accent. The accent is reserved for exactly three things — the
-active set, the Finish Workout button, and a new personal record. Numbers use
-tabular figures so a weight does not jitter while it is typed.
+**Weights are stored in canonical kilograms** and converted only at the display
+and input boundary. The stored value is never rounded, so switching lb ↔ kg
+round-trips without drift.
 
-Every exercise has a drawn line-art pictogram on a tinted tile. The art is
-original, defined once as data in `src/data/pictograms.ts`: the app renders it
-with react-native-svg, and `scripts/preview-pictograms.js` rasterises the same
-data to a PNG contact sheet so it can be reviewed rather than guessed at.
+**Records are derived, never stored.** Delete the session that held a best and
+the next-best is simply recomputed, instead of leaving an orphaned row claiming
+a lift that no longer exists.
 
-```bash
-npx tsc -p tsconfig.test.json && node scripts/preview-pictograms.js
+## Checks
+
+```powershell
+npm run typecheck
 ```
 
-A user photo taken on the exercise's detail screen replaces the pictogram, and
-sticks to that exercise name from then on.
+```powershell
+npm test
+```
 
-## Shipping
+79 unit tests, aimed at the places where a bug would be *silent* rather than
+loud: ghost-set mapping, when the badge appears, the records tiebreak, unit
+round-tripping, weekly streak boundaries, and that every built-in exercise maps
+to a pictogram.
 
-Expo Go is a development tool only. Release builds go through EAS, which works
-on Windows:
+One of those tests caught a real bug: a keyword pattern ordered `press` above
+`leg press`, which sent a custom "Leg Press" to the overhead-press drawing.
 
-```bash
+## Status
+
+Feature-complete and typechecking; 79/79 tests pass. Pre-release — not yet on
+the App Store. See [`SHIPPING.md`](SHIPPING.md) for the remaining checklist and
+[`CLAUDE.md`](CLAUDE.md) for the design brief and the reasoning behind the
+non-obvious calls.
+
+Release builds go through EAS, which runs on Windows:
+
+```powershell
 npx eas-cli build --profile production --platform ios
-npx eas-cli submit --platform ios
 ```
 
-`eas.json` also has a `demo` profile, which bakes in the sample data for
-screenshots and review video. Do not ship that profile to the App Store.
+## Deliberately not building
 
-Before submitting, see `SHIPPING.md`.
+Charts and progress graphs · rest timers · programmes and templates · estimated
+1RM · social feed · cloud sync · ads.
+
+Every one of those is in competing apps. Each is also a reason the log takes
+longer than the set does. Repa does one thing other apps don't, and nothing they
+already do well.
